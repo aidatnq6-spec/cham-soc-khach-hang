@@ -72,7 +72,7 @@ Chấp nhận JSON dạng mảng cũ và toàn bộ backup có `issues`, `progre
 
 Bản sao lưu và dữ liệu offline được lưu trong IndexedDB, tách theo uid, giữ tối đa 12 phiên bản và có ảnh nhúng khi tạo mới. Backup v1/v2 trong localStorage được chuyển một lần sang IndexedDB; giữ nguyên bản nguồn cũ. Có bản tự động mỗi 24 giờ khi ứng dụng hoạt động. Nếu lưu trữ trên thiết bị bị chặn hoặc đầy, dữ liệu Firebase vẫn được tải để tra cứu; thao tác sửa/thay thế vẫn yêu cầu tạo được backup trước. Xuất file JSON để giữ bản sao độc lập.
 
-`legacy/` giữ nguồn gốc và cách deploy bản cũ, hoàn toàn nằm ngoài `public/`. Không mở song song bản cũ và mới để chỉnh dữ liệu: state cũ không tiếp tục đồng bộ từ schema mới. Để quay về bản cũ sau khi đã chỉnh ở bản mới, xuất JSON rồi nhập các kịch bản vào bản cũ; bản cũ không giữ đầy đủ progress từ schema mới.
+Mã nguồn ứng dụng HTML/JavaScript cũ đã được gỡ khỏi thư mục làm việc sau khi chuyển sang Next.js; vẫn có thể tra cứu trong lịch sử Git. Bộ đọc dữ liệu v1 và chuyển đổi backup được giữ lại để tiếp tục nhập dữ liệu cũ. File `it-support-scripts.json` là bản xuất dữ liệu để tham khảo/nhập thủ công; dữ liệu khởi tạo của ứng dụng nằm trong `lib/domain/seed.json`.
 
 ## AI phía máy chủ
 
@@ -98,7 +98,7 @@ npm.cmd run build
 npm.cmd start
 ```
 
-Next.js cần **hosting chạy Node.js/Next.js server** cho API AI; không dùng `output: export` với API động. Có thể chọn nhà cung cấp sau; repository chưa được deploy. Tham khảo [Next.js deployment](https://nextjs.org/docs/app/getting-started/deploying).
+Next.js cần **hosting chạy Node.js/Next.js server** cho API AI; không dùng `output: export` với API động. Với Vercel, xem phần cấu hình triển khai ở trên. Tham khảo [Next.js deployment](https://nextjs.org/docs/app/getting-started/deploying).
 
 Service worker mới thay cache v1, cache shell và tài nguyên tĩnh, bỏ qua API/RSC/auth. Đã đăng nhập và tải thành công trên thiết bị thì có bản dữ liệu để tra cứu offline; không cho ghi khi offline. Đăng xuất xóa bản cache dữ liệu hiện tại của uid và dữ liệu local v1; các backup thủ công vẫn nằm trên thiết bị theo uid. Thiết bị dùng chung nên tải backup về nơi riêng và xóa các backup trình duyệt không muốn lưu.
 

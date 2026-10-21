@@ -9,4 +9,4 @@ Xem README.md để biết cấu hình và chuyển đổi đầy đủ.
 5. AI tùy chọn: cấu hình OpenRouter và Firebase Admin ở server theo README.md.
 6. Production cần hosting hỗ trợ Next.js server. Không chạy firebase init hosting với public directory là thư mục gốc dự án.
 
-Bản cấu hình và hướng dẫn cũ nằm trong legacy/. Nguồn cũ không được dùng để deploy bản Next.js.
+Mã nguồn bản cũ đã được gỡ khỏi thư mục làm việc; có thể tra cứu trong lịch sử Git. Deploy bản Next.js theo README.md.

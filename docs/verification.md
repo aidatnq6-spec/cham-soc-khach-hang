@@ -40,7 +40,13 @@ Log kiểm thử Emulator nằm trong `artifacts/emulator-test.log`, audit produ
 - AI máy chủ cần Firebase Admin credentials/ADC và OpenRouter API key. Chưa thử nhà cung cấp AI thật; gợi ý nội bộ hoạt động độc lập.
 - Sao lưu ảnh nhúng và cache offline hiện dùng IndexedDB (bản sửa lỗi quota ngày 21/10/2026). Khi thiết bị hết dung lượng hoặc chặn lưu trữ, thao tác sửa/thay thế vẫn dừng nếu không tạo được backup trước; dữ liệu Firebase vẫn được tải để tra cứu.
 
-Nguồn cũ giữ trong `legacy/`. Dữ liệu Firestore v1 được giữ trong main.state sau chuyển đổi; không xóa tự động. Generation và ảnh cũ cũng chưa tự dọn để bảo toàn khả năng khôi phục.
+Nguồn cũ ban đầu được giữ trong `legacy/`, sau đó đã được gỡ theo yêu cầu dọn mã nguồn; có thể tra cứu trong lịch sử Git. Dữ liệu Firestore v1 được giữ trong main.state sau chuyển đổi; không xóa tự động. Generation và ảnh cũ cũng chưa tự dọn để bảo toàn khả năng khôi phục.
+
+## Dọn mã nguồn cũ
+
+Ngày 21/10/2026: gỡ 13 file trong `legacy/` (ứng dụng tĩnh, CSS, service worker, cấu hình và launcher cũ), icon trùng ở `icons/` và hàm `issueCollectionPath` không còn nơi gọi. Icon đang phục vụ ứng dụng vẫn nằm tại `public/icons/`. Bỏ cấu hình loại trừ `legacy` không còn cần thiết; cập nhật hướng dẫn hiện hành. Các tài liệu thiết kế/kế hoạch giữ nội dung lịch sử của đợt chuyển đổi.
+
+Giữ file xuất dữ liệu `it-support-scripts.json`, seed của Next.js, bộ đọc dữ liệu v1, migration, backup và toàn bộ cấu hình Firebase đang dùng. Không xóa dữ liệu cloud hoặc biến môi trường. Sau khi dọn: 41 kiểm thử đạt, 10 kiểm thử Emulator được bỏ qua trong lệnh test thường; lint, TypeScript và build production đều đạt.
 
 ## Sửa lỗi quota bộ nhớ trình duyệt
 

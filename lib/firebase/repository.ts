@@ -18,8 +18,6 @@ const root = (uid: string) =>
   doc(getFirebase().db, "users", uid, "app", "main");
 const genRef = (uid: string, generation: string) =>
   doc(collection(root(uid), "generations"), generation);
-export const issueCollectionPath = (uid: string, generation: string) =>
-  `users/${uid}/app/main/generations/${generation}/issues`;
 const conflict = () =>
   new Error("Dữ liệu đã thay đổi trên thiết bị khác. Tải bản mới và thử lại.");
 function assertImages(uid: string, issues: Issue[]) {

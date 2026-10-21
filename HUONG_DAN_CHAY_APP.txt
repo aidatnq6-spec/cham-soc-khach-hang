@@ -9,5 +9,5 @@
 Xem tren dien thoai cung Wi-Fi: bam MO_TREN_DIEN_THOAI.bat.
 Clipboard/PWA can HTTPS hoac localhost; HTTP LAN co the can copy thu cong.
 Khong mo file index.html va khong dung Python http.server cho ban moi.
-Ban cu duoc luu trong legacy/ de doi chieu.
+Ma nguon ban cu da duoc go; co the tra cuu trong lich su Git.
 Khong deploy Firebase Hosting tinh tu thu muc goc. Xem README.md de trien khai production.
