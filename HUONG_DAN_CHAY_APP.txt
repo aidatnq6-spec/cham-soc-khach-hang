@@ -1,0 +1,13 @@
+﻿BAN NEXT.JS + TYPESCRIPT + FIREBASE
+
+1. Cai Node.js 24 LTS (khuyen nghi).
+2. Mo PowerShell tai thu muc du an, chay npm.cmd ci.
+3. Kiem tra .env.local, xem .env.example va README.md.
+4. Bam MO_PHAN_MEM.bat hoac chay npm.cmd run dev.
+5. Mo http://localhost:4173 sau khi terminal hien Ready.
+
+Xem tren dien thoai cung Wi-Fi: bam MO_TREN_DIEN_THOAI.bat.
+Clipboard/PWA can HTTPS hoac localhost; HTTP LAN co the can copy thu cong.
+Khong mo file index.html va khong dung Python http.server cho ban moi.
+Ban cu duoc luu trong legacy/ de doi chieu.
+Khong deploy Firebase Hosting tinh tu thu muc goc. Xem README.md de trien khai production.

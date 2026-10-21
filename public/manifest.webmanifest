@@ -1,0 +1,7 @@
+{
+  "name": "CSKH Script — Kịch bản hỗ trợ", "short_name": "CSKH Script",
+  "description": "Tra cứu quy trình xử lý và tạo tin nhắn hỗ trợ khách hàng.",
+  "start_url": "/", "scope": "/", "display": "standalone", "lang": "vi",
+  "background_color": "#f3f6fb", "theme_color": "#2563eb",
+  "icons": [{ "src": "/icons/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid && request.auth.token.email == 'phongdepdanang@gmail.com'; }
+    match /users/{uid}/app/main {
+      allow read, write: if owner(uid);
+      match /generations/{generation}/issues/{issueId} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.id == issueId
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 300
+          && request.resource.data.categoryId in ['cks', 'hddt', 'bhxh', 'canho', 'dautu']
+          && request.resource.data.revision is int && request.resource.data.revision > 0
+          && request.resource.data.steps is list && request.resource.data.steps.size() <= 100
+          && request.resource.data.images is list && request.resource.data.images.size() <= 30
+          && request.resource.data.priorityLabels is list && request.resource.data.priorityLabels.hasOnly(['common','urgent','remote','escalate']);
+      }
+      match /generations/{generation}/progress/{issueId} {
+        allow read, delete: if owner(uid);
+        allow create, update: if owner(uid) && request.resource.data.checked is map && request.resource.data.views is int && request.resource.data.views >= 0;
+      }
+    }
+  }
+}
