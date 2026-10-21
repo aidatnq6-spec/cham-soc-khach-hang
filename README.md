@@ -21,6 +21,16 @@ Copy-Item .env.example .env.local
 
 Điền các `NEXT_PUBLIC_FIREBASE_*` từ Firebase Console và email được phép. Đây là cấu hình web công khai; không điền private key vào biến `NEXT_PUBLIC_*`. Khởi động lại Next.js sau khi sửa môi trường. Khi deploy, biến public cần có ở bước build.
 
+## Triển khai trên Vercel
+
+File `.env.local` chỉ dùng trên máy và không được Git đưa lên Vercel. Nếu trang đăng nhập báo “Chưa cấu hình Firebase”, mở Project → Settings → Environment Variables và nhập các biến `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_ALLOWED_EMAIL` từ cấu hình local. Chọn Production cho tên miền chính; chỉ chọn Preview nếu muốn bản thử nghiệm dùng cùng project Firebase.
+
+File `.env.vercel.local` đã được chuẩn bị trên máy để dùng với chức năng Import .env của Vercel. File này chỉ chứa cấu hình Firebase web công khai, email được phép và tắt emulator; được gitignore. Không nhập toàn bộ `.env.local` nếu file có khóa bí mật hoặc cấu hình emulator.
+
+Sau khi lưu biến, vào Deployments → chọn bản triển khai Production → Redeploy. Các biến `NEXT_PUBLIC_*` được đóng gói lúc build nên chỉ lưu biến hoặc tải lại trang sẽ không sửa được bản build cũ. Sau khi bản mới Ready, mở lại trang và kiểm tra đăng nhập. Nếu vẫn thấy giao diện cũ, tải lại bằng Ctrl+Shift+R.
+
+AI qua OpenRouter cần cấu hình server riêng như phần bên dưới; không cần các khóa AI để bật đăng nhập Firebase. Nếu sau đó gặp `auth/unauthorized-domain`, thêm hostname triển khai vào Firebase Console → Authentication → Settings → Authorized domains.
+
 ## Cấu hình Firebase
 
 - Giữ project `cskh-6fd41`, user Authentication và mật khẩu hiện tại. Ứng dụng không tạo user production.
