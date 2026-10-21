@@ -21,6 +21,11 @@ import {
 } from "@/lib/domain/backups";
 import { errorMessage, parseDataset } from "@/lib/domain/schema";
 import type { Dataset, Issue } from "@/types";
+import {
+  readStored,
+  writeStored,
+  removeStored,
+} from "@/lib/domain/local-store";
 
 const empty: Dataset = { issues: [], progress: {} };
 export function useWorkspace() {
@@ -100,13 +105,15 @@ export function useWorkspace() {
     async function start() {
       try {
         if (!online) {
-          const cached = localStorage.getItem(cacheKey(uid));
+          const stored = await readStored<Dataset>(cacheKey(uid));
+          const cached =
+            stored ?? JSON.parse(localStorage.getItem(cacheKey(uid)) ?? "null");
           if (!cached)
             throw new Error(
               "Chưa có dữ liệu offline trên thiết bị này. Kết nối mạng để tải lần đầu.",
             );
           if (alive) {
-            setData(parseDataset(JSON.parse(cached)));
+            setData(parseDataset(cached));
             setReady(true);
             setFault("");
           }
@@ -115,7 +122,12 @@ export function useWorkspace() {
         setReady(false);
         setFault("");
         let legacy: unknown;
-        const saved = localStorage.getItem("it-support-script-data-v1");
+        let saved: string | null = null;
+        try {
+          saved = localStorage.getItem("it-support-script-data-v1");
+        } catch {
+          /* Cloud loading must not depend on browser storage access. */
+        }
         // Invalid local JSON must not hide a valid cloud state.
         if (saved) {
           try {
@@ -126,7 +138,12 @@ export function useWorkspace() {
         }
         await repository.ensureMigrated(uid, legacy);
         if (!alive) return;
-        migrateLocalBackups(uid);
+        void migrateLocalBackups(uid).catch(() => {
+          if (alive)
+            setNotice(
+              "Dữ liệu Firebase vẫn tải bình thường. Chưa chuyển được sao lưu trên thiết bị; các bản cũ vẫn được giữ.",
+            );
+        });
         stop = repository.subscribeDataset(
           uid,
           (snapshot, currentGeneration) => {
@@ -138,17 +155,18 @@ export function useWorkspace() {
             setFault("");
             const version = ++cacheRevision;
             void portableDataset(snapshot)
-              .then((portable) => {
+              .then(async (portable) => {
                 if (!alive || version !== cacheRevision) return;
-                localStorage.setItem(cacheKey(uid), JSON.stringify(portable));
-                const latestAuto = readBackups(uid).find(
+                await writeStored(cacheKey(uid), portable);
+                if (!alive || version !== cacheRevision) return;
+                const latestAuto = (await readBackups(uid)).find(
                   (b) => b.reason === "Sao lưu tự động hằng ngày",
                 );
                 if (
                   !latestAuto ||
                   Date.now() - Date.parse(latestAuto.createdAt) > 86_400_000
                 )
-                  addBackup(uid, portable, "Sao lưu tự động hằng ngày");
+                  await addBackup(uid, portable, "Sao lưu tự động hằng ngày");
               })
               .catch(() => {
                 if (alive)
@@ -196,7 +214,7 @@ export function useWorkspace() {
         if (backupReason) {
           const backup = await portableDataset(latest.current);
           if (activeUser.current !== uid) return false;
-          addBackup(uid, backup, backupReason);
+          await addBackup(uid, backup, backupReason);
         }
         if (activeUser.current !== uid) return false;
         await work();
@@ -231,6 +249,7 @@ export function useWorkspace() {
     }
   }
   async function logout() {
+    const uid = user?.uid;
     try {
       if (user) {
         localStorage.removeItem(cacheKey(user.uid));
@@ -241,6 +260,7 @@ export function useWorkspace() {
     }
     try {
       await signOut(getFirebase().auth);
+      if (uid) await removeStored(cacheKey(uid)).catch(() => {});
       setNotice("");
       setFault("");
     } catch (error) {

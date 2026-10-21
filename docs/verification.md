@@ -38,6 +38,12 @@ Log kiểm thử Emulator nằm trong `artifacts/emulator-test.log`, audit produ
 - Chưa đăng nhập hay ghi dữ liệu production để thử. Chưa deploy hosting hoặc Firestore/Storage rules.
 - Cấu hình web `.env.local` được giữ từ bản cũ. Người vận hành cần bật/cấu hình Storage, kiểm tra rules, domain và CORS trước khi dùng upload mới trên production.
 - AI máy chủ cần Firebase Admin credentials/ADC và OpenRouter API key. Chưa thử nhà cung cấp AI thật; gợi ý nội bộ hoạt động độc lập.
-- Sao lưu ảnh nhúng và cache offline dùng localStorage; dữ liệu nhiều ảnh có thể hết quota. Thao tác sửa/thay thế sẽ dừng nếu không tạo được backup trước; cần tải bản xuất ra máy và dọn backup trình duyệt. Đây là giới hạn cần cân nhắc chuyển sang IndexedDB khi kho ảnh lớn.
+- Sao lưu ảnh nhúng và cache offline hiện dùng IndexedDB (bản sửa lỗi quota ngày 21/10/2026). Khi thiết bị hết dung lượng hoặc chặn lưu trữ, thao tác sửa/thay thế vẫn dừng nếu không tạo được backup trước; dữ liệu Firebase vẫn được tải để tra cứu.
 
 Nguồn cũ giữ trong `legacy/`. Dữ liệu Firestore v1 được giữ trong main.state sau chuyển đổi; không xóa tự động. Generation và ảnh cũ cũng chưa tự dọn để bảo toàn khả năng khôi phục.
+
+## Sửa lỗi quota bộ nhớ trình duyệt
+
+Đã tái hiện nguyên nhân: `migrateLocalBackups()` ghi bản sao lưu lớn vào localStorage trước khi subscribe Firestore, nên QuotaExceededError khiến workspace không sẵn sàng. Chuyển backup/cache sang IndexedDB, cập nhật các thao tác sao lưu/xóa/đọc thành bất đồng bộ và tách migration backup khỏi luồng tải cloud. Giữ nguyên backup nguồn trong localStorage; dấu chuyển đổi trong IndexedDB ngăn các bản đã xóa xuất hiện lại. Thay đổi backup đồng thời được thực hiện trong transaction.
+
+30 kiểm thử unit/API/React đạt sau bản sửa (10 kiểm thử Emulator được skip trong lệnh test thường). Sáu kiểm thử mới bao gồm migration với localStorage đã đầy, backup nhiều ảnh, hợp nhất v1/v2 và migration một lần, backup đồng thời, cache trên 6 MB, rollback khi lỗi lưu và tải cloud thành công dù migration/cache bị lỗi. TypeScript và lint đạt. Không sửa dữ liệu production để kiểm thử.

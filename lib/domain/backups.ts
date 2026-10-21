@@ -1,43 +1,90 @@
 import { parseDataset } from "./schema";
 import type { Backup, Dataset } from "@/types";
+import { readStored, updateStored } from "./local-store";
 export const cacheKey = (uid: string) => `cskh-v2-${uid}`;
 export const backupKey = (uid: string) => `cskh-backups-v2-${uid}`;
-export function readBackups(uid: string): Backup[] {
-  try {
-    const raw: unknown = JSON.parse(
-      localStorage.getItem(backupKey(uid)) ?? "[]",
-    );
-    if (!Array.isArray(raw)) return [];
-    return raw.slice(0, 12).flatMap((item) => {
-      try {
-        if (
-          typeof item.id !== "string" ||
-          typeof item.reason !== "string" ||
-          !Number.isFinite(Date.parse(item.createdAt))
-        )
-          return [];
-        return [
-          {
-            ...parseDataset(item),
-            schemaVersion: 2 as const,
-            id: item.id,
-            createdAt: item.createdAt,
-            reason: item.reason,
-          },
-        ];
-      } catch {
+function normalizeBackups(raw: unknown): Backup[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 12).flatMap((item) => {
+    try {
+      if (
+        typeof item.id !== "string" ||
+        typeof item.reason !== "string" ||
+        !Number.isFinite(Date.parse(item.createdAt))
+      )
         return [];
-      }
-    });
+      return [
+        {
+          ...parseDataset(item),
+          schemaVersion: 2 as const,
+          id: item.id,
+          createdAt: item.createdAt,
+          reason: item.reason,
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
+}
+interface BackupStore {
+  migrated: true;
+  backups: Backup[];
+}
+function envelope(value: unknown): BackupStore {
+  const data = value as Partial<BackupStore> | undefined;
+  return { migrated: true, backups: normalizeBackups(data?.backups) };
+}
+function readLegacy(key: string): unknown {
+  const value = localStorage.getItem(key);
+  try {
+    return value ? JSON.parse(value) : [];
   } catch {
     return [];
   }
 }
-export function addBackup(
+export async function migrateLocalBackups(uid: string): Promise<void> {
+  const key = backupKey(uid);
+  if ((await readStored<BackupStore>(key))?.migrated) return;
+  const v2 = normalizeBackups(readLegacy(key));
+  const raw = readLegacy("it-support-backups-v1");
+  const v1 = normalizeBackups(
+    Array.isArray(raw)
+      ? raw.map((item) => ({
+          ...item?.data,
+          id: item?.id,
+          reason: item?.reason,
+          createdAt: item?.createdAt,
+        }))
+      : [],
+  );
+  await updateStored(key, (previous) => {
+    if ((previous as BackupStore | undefined)?.migrated)
+      return envelope(previous);
+    const unique = new Map(
+      [...envelope(previous).backups, ...v2, ...v1].map((backup) => [
+        backup.id,
+        backup,
+      ]),
+    );
+    return {
+      migrated: true as const,
+      backups: [...unique.values()]
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 12),
+    };
+  });
+  // Original localStorage backups are retained; no quota-sensitive setItem is used.
+}
+export async function readBackups(uid: string): Promise<Backup[]> {
+  await migrateLocalBackups(uid);
+  return envelope(await readStored(backupKey(uid))).backups;
+}
+export async function addBackup(
   uid: string,
   dataset: Dataset,
   reason: string,
-): Backup {
+): Promise<Backup> {
   const backup: Backup = {
     ...structuredClone(dataset),
     id: crypto.randomUUID(),
@@ -45,37 +92,20 @@ export function addBackup(
     createdAt: new Date().toISOString(),
     reason,
   };
-  localStorage.setItem(
-    backupKey(uid),
-    JSON.stringify([backup, ...readBackups(uid)].slice(0, 12)),
-  );
+  await migrateLocalBackups(uid);
+  await updateStored(backupKey(uid), (previous) => ({
+    migrated: true as const,
+    backups: [backup, ...envelope(previous).backups].slice(0, 12),
+  }));
   return backup;
 }
-export function migrateLocalBackups(uid: string) {
-  if (localStorage.getItem(backupKey(uid)) !== null) return;
-  let old: unknown;
-  try {
-    old = JSON.parse(localStorage.getItem("it-support-backups-v1") ?? "[]");
-  } catch {
-    old = [];
-  }
-  if (!Array.isArray(old)) return;
-  const backups = old.slice(0, 12).flatMap((item) => {
-    try {
-      return [
-        {
-          ...parseDataset(item.data),
-          id: String(item.id),
-          schemaVersion: 2,
-          reason: String(item.reason),
-          createdAt: String(item.createdAt),
-        },
-      ];
-    } catch {
-      return [];
-    }
-  });
-  localStorage.setItem(backupKey(uid), JSON.stringify(backups));
+export async function deleteBackup(uid: string, id: string): Promise<Backup[]> {
+  await migrateLocalBackups(uid);
+  const result = await updateStored(backupKey(uid), (previous) => ({
+    migrated: true as const,
+    backups: envelope(previous).backups.filter((backup) => backup.id !== id),
+  }));
+  return result.backups;
 }
 export function downloadJson(data: unknown, filename: string) {
   const url = URL.createObjectURL(

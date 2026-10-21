@@ -99,6 +99,13 @@ export function blankIssue(categoryId: Issue["categoryId"]): Issue {
   };
 }
 export function errorMessage(error: unknown): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "name" in error &&
+    error.name === "QuotaExceededError"
+  )
+    return "Bộ nhớ thiết bị không còn đủ để sao lưu. Hãy xuất dữ liệu ra file hoặc xóa bớt bản sao lưu trong ứng dụng rồi thử lại.";
   if (error instanceof z.ZodError)
     return "Dữ liệu không hợp lệ: kiểm tra tên, nhóm, nhãn, ID và ảnh trong file.";
   if (error && typeof error === "object" && "code" in error) {

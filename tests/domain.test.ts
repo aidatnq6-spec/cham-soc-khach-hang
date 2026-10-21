@@ -8,6 +8,7 @@ import { filterIssues, normalize, suggestLocally } from "@/lib/domain/search";
 import { composeMessage } from "@/lib/domain/templates";
 import { initialFilters } from "@/lib/domain/catalog";
 import { addBackup, readBackups } from "@/lib/domain/backups";
+import { IDBFactory } from "fake-indexeddb";
 
 describe("legacy compatibility and migration", () => {
   it("contains all 13 original scripts with stable IDs including MISA", () => {
@@ -117,17 +118,18 @@ describe("search and message composition", () => {
 });
 describe("backup retention", () => {
   beforeEach(() => {
+    vi.stubGlobal("indexedDB", new IDBFactory());
     const map = new Map<string, string>();
     vi.stubGlobal("localStorage", {
       getItem: (key: string) => map.get(key) ?? null,
       setItem: (key: string, value: string) => map.set(key, value),
     });
   });
-  it("retains 12 copies, accepts empty state and isolates owners", () => {
+  it("retains 12 copies, accepts empty state and isolates owners", async () => {
     for (let i = 0; i < 15; i++)
-      addBackup("owner-a", { issues: [], progress: {} }, `Version ${i}`);
-    expect(readBackups("owner-a")).toHaveLength(12);
-    expect(readBackups("owner-b")).toEqual([]);
-    expect(readBackups("owner-a")[0].reason).toBe("Version 14");
+      await addBackup("owner-a", { issues: [], progress: {} }, `Version ${i}`);
+    expect(await readBackups("owner-a")).toHaveLength(12);
+    expect(await readBackups("owner-b")).toEqual([]);
+    expect((await readBackups("owner-a"))[0].reason).toBe("Version 14");
   });
 });

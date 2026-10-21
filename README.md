@@ -60,7 +60,7 @@ Nhập/khôi phục ghi vào generation mới, rồi chuyển con trỏ sau khi 
 
 Chấp nhận JSON dạng mảng cũ và toàn bộ backup có `issues`, `progress` hoặc `checklistState`/`viewCounts`. File tối đa 50 MB, 2.000 kịch bản, 30 ảnh/kịch bản; ảnh nhúng tối đa 2 MB/ảnh theo schema. File lỗi hoặc trùng ID bị từ chối trước khi thay thế. Ảnh base64 từ backup được đưa vào Storage khi khôi phục để không vượt giới hạn document Firestore. Nếu Storage chưa sẵn sàng, dữ liệu đang dùng không bị thay thế.
 
-Bản sao lưu trên trình duyệt được tách theo uid, giữ tối đa 12 phiên bản và có ảnh nhúng khi tạo mới. Có bản tự động mỗi 24 giờ khi ứng dụng hoạt động. Khi không đủ dung lượng trình duyệt để sao lưu trước thay đổi, thao tác bị chặn và hiển thị lỗi. Xuất file JSON để giữ bản sao độc lập.
+Bản sao lưu và dữ liệu offline được lưu trong IndexedDB, tách theo uid, giữ tối đa 12 phiên bản và có ảnh nhúng khi tạo mới. Backup v1/v2 trong localStorage được chuyển một lần sang IndexedDB; giữ nguyên bản nguồn cũ. Có bản tự động mỗi 24 giờ khi ứng dụng hoạt động. Nếu lưu trữ trên thiết bị bị chặn hoặc đầy, dữ liệu Firebase vẫn được tải để tra cứu; thao tác sửa/thay thế vẫn yêu cầu tạo được backup trước. Xuất file JSON để giữ bản sao độc lập.
 
 `legacy/` giữ nguồn gốc và cách deploy bản cũ, hoàn toàn nằm ngoài `public/`. Không mở song song bản cũ và mới để chỉnh dữ liệu: state cũ không tiếp tục đồng bộ từ schema mới. Để quay về bản cũ sau khi đã chỉnh ở bản mới, xuất JSON rồi nhập các kịch bản vào bản cũ; bản cũ không giữ đầy đủ progress từ schema mới.
 

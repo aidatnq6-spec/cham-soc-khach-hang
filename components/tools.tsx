@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "./modal";
 import { composeMessage } from "@/lib/domain/templates";
 import { suggestLocally } from "@/lib/domain/search";
 import {
   addBackup,
-  backupKey,
+  deleteBackup,
   downloadJson,
   readBackups,
 } from "@/lib/domain/backups";
@@ -13,7 +13,7 @@ import { errorMessage, parseDataset } from "@/lib/domain/schema";
 import { portableDataset } from "@/lib/firebase/images";
 import { categories, priorities } from "@/lib/domain/catalog";
 import type { WorkspaceController } from "@/hooks/use-workspace";
-import type { Issue, Suggestion } from "@/types";
+import type { Backup, Issue, Suggestion } from "@/types";
 
 export function ZaloModal({
   issue,
@@ -205,15 +205,37 @@ export function BackupModal({
   controller: WorkspaceController;
   onClose: () => void;
 }) {
-  const [backups, setBackups] = useState(() => readBackups(c.user!.uid));
+  const [backups, setBackups] = useState<Backup[]>([]);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const uid = c.user!.uid;
+  useEffect(() => {
+    let alive = true;
+    void readBackups(uid)
+      .then((items) => {
+        if (alive) setBackups(items);
+      })
+      .catch((error) => {
+        if (alive) setError(errorMessage(error));
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
   async function create() {
     setBusy(true);
     setError("");
     try {
-      addBackup(c.user!.uid, await portableDataset(c.data), "Sao lưu thủ công");
-      setBackups(readBackups(c.user!.uid));
+      await addBackup(
+        c.user!.uid,
+        await portableDataset(c.data),
+        "Sao lưu thủ công",
+      );
+      setBackups(await readBackups(c.user!.uid));
       c.setNotice("Đã tạo bản sao lưu.");
     } catch (e) {
       setError(errorMessage(e));
@@ -235,7 +257,7 @@ export function BackupModal({
         <button
           className="primary"
           onClick={create}
-          disabled={busy || c.pending}
+          disabled={loading || busy || c.pending}
         >
           {busy ? "Đang chuẩn bị ảnh…" : "Tạo bản sao lưu ngay"}
         </button>
@@ -244,7 +266,11 @@ export function BackupModal({
             {error}
           </p>
         )}
-        {!backups.length && <p>Chưa có bản sao lưu.</p>}
+        {loading ? (
+          <p role="status">Đang tải bản sao lưu…</p>
+        ) : (
+          !backups.length && <p>Chưa có bản sao lưu.</p>
+        )}
         {backups.map((backup) => (
           <article className="backup-item" key={backup.id}>
             <div>
@@ -294,17 +320,20 @@ export function BackupModal({
               <button
                 className="danger"
                 disabled={busy || c.pending}
-                onClick={() => {
+                onClick={async () => {
                   if (!confirm("Xóa bản sao lưu này trên trình duyệt?")) return;
+                  setBusy(true);
+                  setError("");
                   try {
-                    const remaining = backups.filter((b) => b.id !== backup.id);
-                    localStorage.setItem(
-                      backupKey(c.user!.uid),
-                      JSON.stringify(remaining),
+                    const remaining = await deleteBackup(
+                      c.user!.uid,
+                      backup.id,
                     );
                     setBackups(remaining);
                   } catch (e) {
                     setError(errorMessage(e));
+                  } finally {
+                    setBusy(false);
                   }
                 }}
               >
