@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import {
   Check,
   Copy,
@@ -8,22 +9,34 @@ import {
   RotateCcw,
   Send,
   Trash2,
+  ChevronDown,
+  NotebookPen,
+  Images,
 } from "lucide-react";
 import { priorities, categories } from "@/lib/domain/catalog";
 import { copyImage, imageBlob } from "@/lib/firebase/images";
 import { ImageView } from "./image-view";
 import { ActionMenu } from "./action-menu";
 import type { Issue, Progress } from "@/types";
-export function PriorityTags({ issue }: { issue: Issue }) {
+export function PriorityTags({
+  issue,
+  compact = false,
+}: {
+  issue: Issue;
+  compact?: boolean;
+}) {
+  const labels = priorities.filter(
+    (p) =>
+      issue.priorityLabels.includes(p.id) && (!compact || p.id !== "common"),
+  );
+  if (!labels.length) return null;
   return (
     <span className="tags">
-      {priorities
-        .filter((p) => issue.priorityLabels.includes(p.id))
-        .map((p) => (
-          <span className={`tag tag-${p.id}`} key={p.id}>
-            {p.name}
-          </span>
-        ))}
+      {labels.map((p) => (
+        <span className={`tag tag-${p.id}`} key={p.id}>
+          {p.name}
+        </span>
+      ))}
     </span>
   );
 }
@@ -50,6 +63,7 @@ export function IssueDetail({
   notify: (message: string) => void;
   fail: (error: unknown) => void;
 }) {
+  const [imagesOpen, setImagesOpen] = useState(false);
   const completed = issue.steps.filter(
     (_, index) => progress.checked[index],
   ).length;
@@ -225,46 +239,84 @@ export function IssueDetail({
             {issue.escalation || "Chưa có điều kiện leo thang."}
           </p>
         </section>
-        <section className="detail-block notes">
-          <h2>Ghi chú nội bộ</h2>
-          <p className="preserve">
-            {issue.internalNotes || "Chưa có ghi chú nội bộ."}
-          </p>
-        </section>
-        <section className="detail-block images-block">
-          <div className="block-heading">
-            <h2>Ảnh minh họa</h2>
-            <button onClick={onEdit} disabled={disabled}>
-              <ImagePlus size={16} aria-hidden="true" />
-              Thêm / sửa ảnh
-            </button>
+        <details className="detail-block supporting-section notes">
+          <summary>
+            <NotebookPen size={18} aria-hidden="true" />
+            <h2>Ghi chú nội bộ</h2>
+            <span className="support-meta">
+              {issue.internalNotes.trim() ? "Đã có ghi chú" : "Chưa có ghi chú"}
+            </span>
+            <ChevronDown
+              className="disclosure-chevron"
+              size={16}
+              aria-hidden="true"
+            />
+          </summary>
+          <div className="support-content">
+            <p className="support-hint">
+              Chỉ dùng nội bộ, không đưa vào tin nhắn gửi khách.
+            </p>
+            <p className="preserve">
+              {issue.internalNotes || "Chưa có ghi chú nội bộ."}
+            </p>
           </div>
-          {issue.images.length ? (
-            <div className="image-gallery">
-              {issue.images.map((image, i) => (
-                <figure key={`${image}-${i}`}>
-                  <ImageView
-                    source={image}
-                    alt={`Ảnh minh họa ${i + 1} của ${issue.name}`}
-                  />
-                  <figcaption>
-                    <span>Ảnh {i + 1}</span>
-                    <div className="row">
-                      <button onClick={() => void handleCopy(image)}>
-                        Copy
-                      </button>
-                      <button onClick={() => void downloadImage(image, i)}>
-                        Tải ảnh
-                      </button>
-                    </div>
-                  </figcaption>
-                </figure>
-              ))}
+        </details>
+        <details
+          className="detail-block supporting-section images-block"
+          onToggle={(event) => setImagesOpen(event.currentTarget.open)}
+        >
+          <summary>
+            <Images size={18} aria-hidden="true" />
+            <h2>Ảnh minh họa</h2>
+            <span className="support-meta">
+              {issue.images.length
+                ? `${issue.images.length} ảnh`
+                : "Chưa có ảnh"}
+            </span>
+            <ChevronDown
+              className="disclosure-chevron"
+              size={16}
+              aria-hidden="true"
+            />
+          </summary>
+          <div className="support-content">
+            <div className="block-heading">
+              <p className="support-hint">
+                Mở ảnh để xem, copy hoặc tải về gửi khách.
+              </p>
+              <button onClick={onEdit} disabled={disabled}>
+                <ImagePlus size={16} aria-hidden="true" />
+                Thêm / sửa ảnh
+              </button>
             </div>
-          ) : (
-            <p className="empty-inline">Chưa có ảnh minh họa.</p>
-          )}
-        </section>
+            {imagesOpen &&
+              (issue.images.length ? (
+                <div className="image-gallery">
+                  {issue.images.map((image, i) => (
+                    <figure key={`${image}-${i}`}>
+                      <ImageView
+                        source={image}
+                        alt={`Ảnh minh họa ${i + 1} của ${issue.name}`}
+                      />
+                      <figcaption>
+                        <span>Ảnh {i + 1}</span>
+                        <div className="row">
+                          <button onClick={() => void handleCopy(image)}>
+                            Copy
+                          </button>
+                          <button onClick={() => void downloadImage(image, i)}>
+                            Tải ảnh
+                          </button>
+                        </div>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-inline">Chưa có ảnh minh họa.</p>
+              ))}
+          </div>
+        </details>
       </div>
       <button
         className="mobile-copy primary"

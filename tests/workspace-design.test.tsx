@@ -7,6 +7,7 @@ import {
   render,
   screen,
   within,
+  waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Workspace } from "@/components/workspace";
@@ -18,6 +19,7 @@ import type { WorkspaceController } from "@/hooks/use-workspace";
 
 const state = vi.hoisted(() => ({
   controller: null as WorkspaceController | null,
+  images: [] as string[],
 }));
 vi.mock("@/hooks/use-workspace", () => ({
   useWorkspace: () => state.controller,
@@ -29,9 +31,23 @@ vi.mock("next/dynamic", () => ({
     },
 }));
 vi.mock("@/components/pwa", () => ({ Pwa: () => null }));
+vi.mock("@/components/image-view", () => ({
+  ImageView: ({ alt }: { alt: string }) => {
+    state.images.push(alt);
+    return <span role="img" aria-label={alt} />;
+  },
+}));
 
 afterEach(cleanup);
 beforeEach(() => {
+  state.images = [];
+  vi.stubGlobal("scrollTo", vi.fn());
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute("open");
+  };
   const storage = new Map<string, string>();
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) ?? null,
@@ -226,5 +242,131 @@ describe("process and Zalo task area", () => {
     await user.click(summary);
     await user.click(screen.getByRole("button", { name: "Xóa kịch bản" }));
     expect(remove).toHaveBeenCalledOnce();
+  });
+});
+
+describe("remaining workspace navigation and supporting content", () => {
+  it("switches categories from both desktop navigation and the compact picker", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    const navigation = screen.getByRole("navigation", {
+      name: "Nhóm nghiệp vụ",
+    });
+    const invoice = within(navigation).getByRole("button", {
+      name: /Hóa đơn điện tử/,
+    });
+    await user.click(invoice);
+    expect(invoice.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      screen.getByRole("button", { name: /Hủy \/ điều chỉnh hóa đơn/ }),
+    ).toBeTruthy();
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Chọn nhóm nghiệp vụ" }),
+      "bhxh",
+    );
+    expect(
+      screen.getByRole("button", { name: /Không vào được cổng BHXH/ }),
+    ).toBeTruthy();
+    expect(
+      within(navigation)
+        .getByRole("button", { name: /Bảo hiểm xã hội/ })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+  it("has four mobile destinations and the tools dialog preserves account/data actions", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    const navigation = screen.getByRole("navigation", {
+      name: "Điều hướng nhanh",
+    });
+    expect(
+      within(navigation)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Kịch bản", "Tìm kiếm", "AI", "Công cụ"]);
+    await user.click(
+      within(navigation).getByRole("button", { name: "Công cụ" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Công cụ" });
+    for (const name of [
+      "Xuất dữ liệu",
+      "Nhập dữ liệu",
+      "Sao lưu / Khôi phục",
+      "Thống kê kịch bản",
+      "Cấu hình AI",
+      "Đăng xuất",
+    ])
+      expect(within(dialog).getByRole("button", { name })).toBeTruthy();
+    expect(
+      within(navigation)
+        .getByRole("button", { name: "Kịch bản" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+    await user.click(within(dialog).getByRole("button", { name: "Đăng xuất" }));
+    expect(state.controller!.logout).toHaveBeenCalledOnce();
+  });
+  it("retains full-screen search after simplifying mobile navigation", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    const navigation = screen.getByRole("navigation", {
+      name: "Điều hướng nhanh",
+    });
+    await user.click(
+      within(navigation).getByRole("button", { name: "Tìm kiếm" }),
+    );
+    const input = screen.getByRole("searchbox", {
+      name: "Tìm kiếm toàn màn hình",
+    });
+    expect(document.activeElement).toBe(input);
+    await user.type(input, "huy / dieu chinh");
+    expect(
+      await screen.findByRole("button", { name: /Hủy \/ điều chỉnh hóa đơn/ }),
+    ).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Đóng tìm kiếm" }));
+    expect(
+      screen.queryByRole("searchbox", { name: "Tìm kiếm toàn màn hình" }),
+    ).toBeNull();
+  });
+  it("keeps internal notes and images collapsed and mounts the gallery only on demand", async () => {
+    const user = userEvent.setup();
+    const edit = vi.fn();
+    const issue = {
+      ...seedDataset().issues[0],
+      images: ["data:image/png;base64,YQ=="],
+      internalNotes: "Ghi chú chỉ dành nội bộ",
+    };
+    render(
+      <IssueDetail
+        issue={issue}
+        progress={{ checked: {}, views: 0 }}
+        disabled={false}
+        onEdit={edit}
+        onDelete={vi.fn()}
+        onCompose={vi.fn()}
+        onCheck={vi.fn()}
+        onReset={vi.fn()}
+        notify={vi.fn()}
+        fail={vi.fn()}
+      />,
+    );
+    const note = screen.getByText("Ghi chú nội bộ").closest("details")!;
+    const images = screen.getByText("Ảnh minh họa").closest("details")!;
+    expect(note.open).toBe(false);
+    expect(images.open).toBe(false);
+    expect(state.images).toEqual([]);
+    expect(
+      screen.getByRole("region", { name: "Tin gửi khách hàng" }).textContent,
+    ).not.toContain(issue.internalNotes);
+    await user.click(screen.getByText("Ghi chú nội bộ"));
+    expect(note.open).toBe(true);
+    await user.click(screen.getByText("Ảnh minh họa"));
+    await screen.findByRole("img", { name: /Ảnh minh họa 1/ });
+    expect(state.images.length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Thêm / sửa ảnh" }));
+    expect(edit).toHaveBeenCalledOnce();
+    await user.click(screen.getByText("Ảnh minh họa"));
+    await waitFor(() =>
+      expect(screen.queryByRole("img", { name: /Ảnh minh họa 1/ })).toBeNull(),
+    );
   });
 });

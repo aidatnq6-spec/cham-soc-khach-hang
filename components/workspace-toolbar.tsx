@@ -129,35 +129,78 @@ export function WorkspaceToolbar({
             label="Công cụ"
             icon={<SlidersHorizontal size={17} aria-hidden="true" />}
           >
-            <span className="action-group-label">Dữ liệu & tiện ích</span>
-            <button disabled={!ready || exporting} onClick={onExport}>
-              <Download size={17} aria-hidden="true" />
-              {exporting ? "Đang xuất dữ liệu…" : "Xuất dữ liệu"}
-            </button>
-            <button disabled={!ready || pending || !online} onClick={onImport}>
-              <Upload size={17} aria-hidden="true" />
-              Nhập dữ liệu
-            </button>
-            <button disabled={!ready} onClick={onBackup}>
-              <History size={17} aria-hidden="true" />
-              Sao lưu / Khôi phục
-            </button>
-            <button disabled={!ready} onClick={onStats}>
-              <BarChart3 size={17} aria-hidden="true" />
-              Thống kê kịch bản
-            </button>
-            <button onClick={onSettings}>
-              <Settings size={17} aria-hidden="true" />
-              Cấu hình AI
-            </button>
-            <hr />
-            <button className="danger" disabled={pending} onClick={onLogout}>
-              <LogOut size={17} aria-hidden="true" />
-              Đăng xuất
-            </button>
+            <WorkspaceToolActions
+              ready={ready}
+              pending={pending}
+              online={online}
+              exporting={exporting}
+              onExport={onExport}
+              onImport={onImport}
+              onBackup={onBackup}
+              onStats={onStats}
+              onSettings={onSettings}
+              onLogout={onLogout}
+            />
           </ActionMenu>
         </div>
       </div>
     </header>
+  );
+}
+
+export type WorkspaceToolActionsProps = Pick<
+  Parameters<typeof WorkspaceToolbar>[0],
+  | "ready"
+  | "pending"
+  | "online"
+  | "exporting"
+  | "onExport"
+  | "onImport"
+  | "onBackup"
+  | "onStats"
+  | "onSettings"
+  | "onLogout"
+>;
+export function WorkspaceToolActions({
+  ready,
+  pending,
+  online,
+  exporting,
+  onExport,
+  onImport,
+  onBackup,
+  onStats,
+  onSettings,
+  onLogout,
+}: WorkspaceToolActionsProps) {
+  return (
+    <div className="tool-actions">
+      <span className="action-group-label">Dữ liệu & tiện ích</span>
+      <button disabled={!ready || exporting} onClick={onExport}>
+        <Download size={17} aria-hidden="true" />
+        {exporting ? "Đang xuất dữ liệu…" : "Xuất dữ liệu"}
+      </button>
+      <button disabled={!ready || pending || !online} onClick={onImport}>
+        <Upload size={17} aria-hidden="true" />
+        Nhập dữ liệu
+      </button>
+      <button disabled={!ready} onClick={onBackup}>
+        <History size={17} aria-hidden="true" />
+        Sao lưu / Khôi phục
+      </button>
+      <button disabled={!ready} onClick={onStats}>
+        <BarChart3 size={17} aria-hidden="true" />
+        Thống kê kịch bản
+      </button>
+      <button onClick={onSettings}>
+        <Settings size={17} aria-hidden="true" />
+        Cấu hình AI
+      </button>
+      <hr />
+      <button className="danger" disabled={pending} onClick={onLogout}>
+        <LogOut size={17} aria-hidden="true" />
+        Đăng xuất
+      </button>
+    </div>
   );
 }

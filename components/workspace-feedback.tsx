@@ -115,7 +115,7 @@ export function WorkspaceLoading({ failed }: { failed: boolean }) {
       aria-label="Đang tải kho kịch bản"
     >
       <span className="sr-only">Đang tải danh sách và nội dung kịch bản.</span>
-      <div className="skeleton-tabs" aria-hidden="true">
+      <div className="skeleton-rail" aria-hidden="true">
         {Array.from({ length: 5 }, (_, i) => (
           <span key={i} className="skeleton-line" />
         ))}

@@ -1,4 +1,4 @@
-const CACHE = 'cskh-next-v2-3';
+const CACHE = 'cskh-next-v2-4';
 const SHELL = ['/', '/icons/app-icon.svg', '/manifest.webmanifest'];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

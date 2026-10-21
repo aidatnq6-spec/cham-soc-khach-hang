@@ -24,4 +24,8 @@ No Firebase mutation, deployment, schema or business logic change is needed for 
 
 ## Completion
 
+## Follow-up authorized in chat
+
+The user requested completion of the remaining UI recommendations. Implement a category rail on desktop (compact horizontal/picker navigation on smaller screens), denser issue rows with only relevant metadata, collapsed internal notes and lazily mounted image galleries, and four mobile destinations: scripts, search, AI and tools. Share tools actions between the header disclosure and mobile dialog. Self-host Be Vietnam Pro with Vietnamese subsets; align spacing, contrast, focus and reduced-motion handling. Preserve all existing data actions, confirmation flows, filters and Zalo composition. Add interaction tests for category selection, navigation and disclosure behavior, then rerun test/lint/typecheck/build and restart the owned local server. No Firebase or schema changes.
+
 Implemented all five tasks. The updated toolbar, cross-category search and keyboard shortcut, error/status precedence, technical-error disclosure, checklist progress and reply copy/compose callbacks pass 7 new component tests. The full local suite has 37 passing tests; 10 emulator checks remain opt-in. Typecheck, lint and production build pass. Browser inventory is empty, so responsive styles were reviewed in source and interactions tested in jsdom; no real-browser visual verification is claimed. Service-worker cache updated to v2-3.

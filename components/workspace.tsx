@@ -3,19 +3,25 @@ import { useDeferredValue, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   ArrowLeft,
-  BarChart3,
   Bot,
   LayoutList,
+  ChevronRight,
+  SlidersHorizontal,
   Plus,
   Search,
-  Send,
   X,
 } from "lucide-react";
 import { useWorkspace, type WorkspaceController } from "@/hooks/use-workspace";
 import { AuthScreen } from "./auth-screen";
 import { IssueDetail, PriorityTags } from "./issue-detail";
 import { Pwa } from "./pwa";
-import { SearchField, WorkspaceToolbar } from "./workspace-toolbar";
+import {
+  SearchField,
+  WorkspaceToolbar,
+  WorkspaceToolActions,
+} from "./workspace-toolbar";
+import { CategoryNavigation } from "./category-navigation";
+import { Modal } from "./modal";
 import {
   SyncStatus,
   WorkspaceError,
@@ -76,7 +82,7 @@ function WorkspaceContent({
   const [filters, setFilters] = useState<Filters>({ ...initialFilters });
   const [editor, setEditor] = useState<Issue | null>(null);
   const [tool, setTool] = useState<
-    "zalo" | "ai" | "backup" | "stats" | "settings" | null
+    "zalo" | "ai" | "backup" | "stats" | "settings" | "tools" | null
   >(null);
   const [focus, setFocus] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
@@ -92,6 +98,8 @@ function WorkspaceContent({
   );
   const active = c.data.issues.find((i) => i.id === activeId) ?? filtered[0];
   const disabled = c.pending || !c.online || !c.ready;
+  const toolsActive =
+    tool !== null && ["tools", "backup", "stats", "settings"].includes(tool);
   const selectedKey = c.user ? `cskh-selection-${c.user.uid}` : "";
   useEffect(() => {
     if (!selectedKey) return;
@@ -241,24 +249,11 @@ function WorkspaceContent({
         <WorkspaceLoading failed={!!c.fault} />
       ) : (
         <main className="workspace" id="main-content">
-          <nav className="category-tabs" aria-label="Nhóm nghiệp vụ">
-            {categories.map((item) => (
-              <button
-                key={item.id}
-                aria-pressed={category === item.id}
-                className={category === item.id ? "active" : ""}
-                style={
-                  category === item.id ? { background: item.color } : undefined
-                }
-                onClick={() => changeCategory(item.id)}
-              >
-                {item.name}
-                <span className="count">
-                  {c.data.issues.filter((i) => i.categoryId === item.id).length}
-                </span>
-              </button>
-            ))}
-          </nav>
+          <CategoryNavigation
+            active={category}
+            issues={c.data.issues}
+            onSelect={changeCategory}
+          />
           <div className="main-panel">
             <aside className="list-panel">
               <div className="panel-title">
@@ -381,13 +376,26 @@ function WorkspaceContent({
                     aria-pressed={active?.id === issue.id}
                     onClick={() => openIssue(issue.id)}
                   >
-                    <span className="issue-category">
-                      {categories.find((c) => c.id === issue.categoryId)?.name}
+                    <span className="issue-row-content">
+                      {(query.trim() || filters.category !== "current") && (
+                        <span className="issue-category">
+                          {
+                            categories.find((c) => c.id === issue.categoryId)
+                              ?.name
+                          }
+                        </span>
+                      )}
+                      <strong>{issue.name}</strong>
+                      <span className="issue-summary" title={issue.summary}>
+                        {issue.summary || "Chưa có mô tả"}
+                      </span>
+                      <PriorityTags issue={issue} compact />
                     </span>
-                    <strong>{issue.name}</strong>
-                    <span>{issue.summary || "Chưa có mô tả"}</span>
-                    <PriorityTags issue={issue} />
-                    <span className="open-label">Mở kịch bản →</span>
+                    <ChevronRight
+                      size={16}
+                      className="issue-open-icon"
+                      aria-hidden="true"
+                    />
                   </button>
                 ))}
               </div>
@@ -399,7 +407,13 @@ function WorkspaceContent({
               )}
             </aside>
             <section className="detail-panel" aria-label="Chi tiết kịch bản">
-              <button className="back-button" onClick={() => setFocus(false)}>
+              <button
+                className="back-button"
+                onClick={() => {
+                  setFocus(false);
+                  window.scrollTo({ top: 0, behavior: "instant" });
+                }}
+              >
                 <ArrowLeft size={18} aria-hidden="true" />
                 Danh sách kịch bản
               </button>
@@ -448,13 +462,15 @@ function WorkspaceContent({
           onClick={() => {
             setFocus(false);
             setMobileSearch(false);
+            window.scrollTo({ top: 0, behavior: "instant" });
           }}
-          aria-pressed={!focus && !mobileSearch}
+          aria-pressed={!mobileSearch && tool !== "ai" && !toolsActive}
         >
           <LayoutList size={20} aria-hidden="true" />
-          Nhóm lỗi
+          Kịch bản
         </button>
         <button
+          disabled={!c.ready}
           onClick={() => {
             setMobileSearch(true);
             setFilters({ ...initialFilters, category: "all" });
@@ -466,25 +482,53 @@ function WorkspaceContent({
           Tìm kiếm
         </button>
         <button
-          disabled={!active}
+          disabled={!c.ready}
           onClick={() => {
-            setFocus(true);
             setMobileSearch(false);
+            setTool("ai");
           }}
-          aria-pressed={focus}
+          aria-pressed={tool === "ai"}
         >
-          <BarChart3 size={20} aria-hidden="true" />
-          Chi tiết
-        </button>
-        <button disabled={!active} onClick={() => setTool("zalo")}>
-          <Send size={20} aria-hidden="true" />
-          Zalo
-        </button>
-        <button disabled={!c.ready} onClick={() => setTool("ai")}>
           <Bot size={20} aria-hidden="true" />
           AI
         </button>
+        <button
+          onClick={() => {
+            setMobileSearch(false);
+            setTool("tools");
+          }}
+          aria-pressed={toolsActive}
+        >
+          <SlidersHorizontal size={20} aria-hidden="true" />
+          Công cụ
+        </button>
       </nav>
+      {tool === "tools" && (
+        <Modal title="Công cụ" onClose={() => setTool(null)} busy={c.pending}>
+          <WorkspaceToolActions
+            ready={c.ready}
+            pending={c.pending}
+            online={c.online}
+            exporting={exporting}
+            onExport={() => {
+              setTool(null);
+              void exportData();
+            }}
+            onImport={() => {
+              setTool(null);
+              importInput.current?.click();
+            }}
+            onBackup={() => setTool("backup")}
+            onStats={() => setTool("stats")}
+            onSettings={() => setTool("settings")}
+            onLogout={() => {
+              setTool(null);
+              setEditor(null);
+              void c.logout();
+            }}
+          />
+        </Modal>
+      )}
       {editor && (
         <IssueEditor
           issue={editor}
