@@ -47,3 +47,9 @@ Nguồn cũ giữ trong `legacy/`. Dữ liệu Firestore v1 được giữ trong
 Đã tái hiện nguyên nhân: `migrateLocalBackups()` ghi bản sao lưu lớn vào localStorage trước khi subscribe Firestore, nên QuotaExceededError khiến workspace không sẵn sàng. Chuyển backup/cache sang IndexedDB, cập nhật các thao tác sao lưu/xóa/đọc thành bất đồng bộ và tách migration backup khỏi luồng tải cloud. Giữ nguyên backup nguồn trong localStorage; dấu chuyển đổi trong IndexedDB ngăn các bản đã xóa xuất hiện lại. Thay đổi backup đồng thời được thực hiện trong transaction.
 
 30 kiểm thử unit/API/React đạt sau bản sửa (10 kiểm thử Emulator được skip trong lệnh test thường). Sáu kiểm thử mới bao gồm migration với localStorage đã đầy, backup nhiều ảnh, hợp nhất v1/v2 và migration một lần, backup đồng thời, cache trên 6 MB, rollback khi lỗi lưu và tải cloud thành công dù migration/cache bị lỗi. TypeScript và lint đạt. Không sửa dữ liệu production để kiểm thử.
+
+## Cải thiện giao diện workspace
+
+Ngày 21/10/2026: gom công cụ dữ liệu và đăng xuất vào disclosure có nhãn; đưa tìm kiếm lên header với Ctrl/Cmd+K và xóa từ khóa. Tìm kiếm toàn màn hình trên điện thoại vẫn có ô nhập riêng. Vùng quy trình hiển thị tiến độ và bước tiếp theo; vùng tin Zalo dùng chữ thường dễ đọc, có nút copy chính và tùy chỉnh. Xóa kịch bản nằm trong menu thao tác. Trạng thái tải/lỗi/offline/thành công được phân biệt; skeleton chờ dữ liệu, lỗi có tóm tắt, nút tải lại và chi tiết thu gọn.
+
+37 kiểm thử đạt, gồm 7 kiểm thử UI mới về tìm xuyên nhóm, shortcut không chiếm focus của dialog, menu đóng bằng Escape/bấm ngoài, trạng thái không báo thành công khi tải/lỗi, retry, tiến độ, copy/compose/delete. TypeScript, lint và build production đều đạt; service-worker cache là v2-3. Không thay controller, schema, quyền Firebase hoặc dữ liệu cloud. Công cụ vẫn không có trình duyệt khả dụng, nên chưa xác minh trực quan trên màn hình desktop/điện thoại thật.

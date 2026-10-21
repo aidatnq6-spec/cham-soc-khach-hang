@@ -1,12 +1,22 @@
 "use client";
-import { Copy, ImagePlus, Pencil, RotateCcw, Send, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ImagePlus,
+  MoreHorizontal,
+  Pencil,
+  RotateCcw,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { priorities, categories } from "@/lib/domain/catalog";
 import { copyImage, imageBlob } from "@/lib/firebase/images";
 import { ImageView } from "./image-view";
+import { ActionMenu } from "./action-menu";
 import type { Issue, Progress } from "@/types";
 export function PriorityTags({ issue }: { issue: Issue }) {
   return (
-    <div className="tags">
+    <span className="tags">
       {priorities
         .filter((p) => issue.priorityLabels.includes(p.id))
         .map((p) => (
@@ -14,7 +24,7 @@ export function PriorityTags({ issue }: { issue: Issue }) {
             {p.name}
           </span>
         ))}
-    </div>
+    </span>
   );
 }
 export function IssueDetail({
@@ -40,10 +50,16 @@ export function IssueDetail({
   notify: (message: string) => void;
   fail: (error: unknown) => void;
 }) {
+  const completed = issue.steps.filter(
+    (_, index) => progress.checked[index],
+  ).length;
+  const nextStep = issue.steps.findIndex(
+    (_, index) => !progress.checked[index],
+  );
   async function copyText() {
     try {
       await navigator.clipboard.writeText(issue.script);
-      notify("Đã copy script Zalo.");
+      notify("Đã copy tin nhắn.");
     } catch (e) {
       fail(e);
     }
@@ -81,37 +97,63 @@ export function IssueDetail({
           <PriorityTags issue={issue} />
         </div>
         <div className="detail-actions">
-          <button onClick={onCompose}>
-            <Send size={16} aria-hidden="true" />
-            Tạo tin Zalo
-          </button>
-          <button onClick={copyText}>
-            <Copy size={16} aria-hidden="true" />
-            Copy Zalo
-          </button>
           <button disabled={disabled} onClick={onEdit}>
             <Pencil size={16} aria-hidden="true" />
-            Sửa
+            Sửa kịch bản
           </button>
-          <button className="danger" disabled={disabled} onClick={onDelete}>
-            <Trash2 size={16} aria-hidden="true" />
-            Xóa
-          </button>
+          <ActionMenu
+            label="Thao tác"
+            icon={<MoreHorizontal size={17} aria-hidden="true" />}
+          >
+            <button className="danger" disabled={disabled} onClick={onDelete}>
+              <Trash2 size={16} aria-hidden="true" />
+              Xóa kịch bản
+            </button>
+          </ActionMenu>
         </div>
       </header>
       <div className="detail-grid">
-        <section className="detail-block">
+        <section
+          className="detail-block process-block"
+          aria-labelledby="process-title"
+        >
           <div className="block-heading">
-            <h2>Quy trình xử lý</h2>
+            <h2 id="process-title">Quy trình xử lý</h2>
             <button onClick={onReset} disabled={disabled}>
               <RotateCcw size={14} aria-hidden="true" />
               Đặt lại
             </button>
           </div>
+          {issue.steps.length > 0 && (
+            <div className="process-progress">
+              <div>
+                <span>
+                  Đã xử lý{" "}
+                  <strong>
+                    {completed}/{issue.steps.length}
+                  </strong>{" "}
+                  bước
+                </span>
+                <span className="progress-caption">
+                  {completed === issue.steps.length
+                    ? "Hoàn tất quy trình"
+                    : `Tiếp theo: bước ${nextStep + 1}`}
+                </span>
+              </div>
+              <progress
+                aria-label="Tiến độ xử lý"
+                max={issue.steps.length}
+                value={completed}
+              />
+            </div>
+          )}
           {issue.steps.length ? (
             <ol className="steps">
               {issue.steps.map((step, i) => (
-                <li key={i}>
+                <li
+                  key={i}
+                  className={`${progress.checked[i] ? "completed" : ""} ${nextStep === i ? "next-step" : ""}`}
+                >
                   <label
                     className={`step ${progress.checked[i] ? "done" : ""}`}
                   >
@@ -121,7 +163,18 @@ export function IssueDetail({
                       disabled={disabled}
                       onChange={(e) => onCheck(i, e.target.checked)}
                     />
-                    <span>{step}</span>
+                    <span className="step-body">
+                      <span className="step-caption">
+                        Bước {i + 1}
+                        {progress.checked[i] && (
+                          <Check size={13} aria-hidden="true" />
+                        )}
+                        {nextStep === i && (
+                          <span className="next-step-label">Đang xử lý</span>
+                        )}
+                      </span>
+                      <span>{step}</span>
+                    </span>
                   </label>
                 </li>
               ))}
@@ -130,15 +183,41 @@ export function IssueDetail({
             <p className="muted">Chưa có quy trình.</p>
           )}
         </section>
-        <section className="detail-block script-block">
+        <section
+          className="detail-block script-block"
+          aria-labelledby="reply-title"
+        >
           <div className="block-heading">
-            <h2>Script Zalo gửi khách</h2>
-            <button onClick={copyText}>
-              <Copy size={14} aria-hidden="true" />
-              Copy
+            <div>
+              <h2 id="reply-title">Tin gửi khách hàng</h2>
+              <p className="reply-hint">Nội dung dùng để gửi qua Zalo</p>
+            </div>
+            <Send size={20} aria-hidden="true" />
+          </div>
+          <div className="reply-preview">
+            {issue.script ||
+              "Chưa có tin nhắn mẫu. Chọn Sửa kịch bản để bổ sung nội dung."}
+          </div>
+          <div className="reply-actions">
+            <button
+              className="primary desktop-copy"
+              disabled={!issue.script.trim()}
+              onClick={copyText}
+            >
+              <Copy size={17} aria-hidden="true" />
+              Copy tin nhắn
+            </button>
+            <button onClick={onCompose}>
+              <Pencil size={16} aria-hidden="true" />
+              Tùy chỉnh tin nhắn
             </button>
           </div>
-          <pre>{issue.script || "Chưa có script."}</pre>
+          {/\{\{\s*(ten_khach|mst|phan_mem)\s*\}\}/i.test(issue.script) && (
+            <p className="reply-template-note">
+              Mẫu có thông tin khách hàng cần điền. Chọn “Tùy chỉnh tin nhắn” để
+              hoàn thiện trước khi gửi.
+            </p>
+          )}
         </section>
         <section className="detail-block escalation">
           <h2>Khi nào cần leo thang?</h2>
@@ -187,9 +266,13 @@ export function IssueDetail({
           )}
         </section>
       </div>
-      <button className="mobile-copy primary" onClick={copyText}>
+      <button
+        className="mobile-copy primary"
+        disabled={!issue.script.trim()}
+        onClick={copyText}
+      >
         <Copy size={18} aria-hidden="true" />
-        Copy Zalo
+        Copy tin nhắn
       </button>
     </article>
   );

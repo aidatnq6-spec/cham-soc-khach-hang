@@ -5,22 +5,22 @@ import {
   ArrowLeft,
   BarChart3,
   Bot,
-  Download,
-  Headphones,
   LayoutList,
-  LogOut,
   Plus,
   Search,
   Send,
-  Settings,
-  Upload,
-  History,
   X,
 } from "lucide-react";
 import { useWorkspace, type WorkspaceController } from "@/hooks/use-workspace";
 import { AuthScreen } from "./auth-screen";
 import { IssueDetail, PriorityTags } from "./issue-detail";
 import { Pwa } from "./pwa";
+import { SearchField, WorkspaceToolbar } from "./workspace-toolbar";
+import {
+  SyncStatus,
+  WorkspaceError,
+  WorkspaceLoading,
+} from "./workspace-feedback";
 import { categories, initialFilters, priorities } from "@/lib/domain/catalog";
 import { blankIssue, errorMessage, parseDataset } from "@/lib/domain/schema";
 import { filterIssues } from "@/lib/domain/search";
@@ -83,6 +83,7 @@ function WorkspaceContent({
   const [exporting, setExporting] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
   const filtered = filterIssues(
     c.data.issues,
     deferredQuery,
@@ -101,8 +102,30 @@ function WorkspaceContent({
     }
   }, [selectedKey, category, activeId]);
   useEffect(() => {
-    if (mobileSearch) searchRef.current?.focus();
+    if (mobileSearch) mobileSearchRef.current?.focus();
   }, [mobileSearch]);
+  useEffect(() => {
+    function shortcut(event: KeyboardEvent) {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "k" &&
+        c.ready &&
+        !document.querySelector("dialog[open]")
+      ) {
+        event.preventDefault();
+        setMobileSearch(false);
+        setFocus(false);
+        searchRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", shortcut);
+    return () => document.removeEventListener("keydown", shortcut);
+  }, [c.ready]);
+  function updateQuery(value: string) {
+    setQuery(value);
+    setActiveId("");
+    setFocus(false);
+  }
   function openIssue(id: string) {
     const issue = c.data.issues.find((i) => i.id === id);
     if (!issue) return;
@@ -166,123 +189,56 @@ function WorkspaceContent({
       <a className="skip-link" href="#main-content">
         Đến nội dung chính
       </a>
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-icon">
-            <Headphones aria-hidden="true" />
-          </span>
-          <div>
-            <strong>CSKH Script</strong>
-            <small>Kịch bản hỗ trợ khách hàng</small>
-          </div>
-        </div>
-        <div className="top-actions">
-          <button
-            title="Xuất dữ liệu"
-            aria-label="Xuất dữ liệu"
-            disabled={!c.ready || exporting}
-            onClick={exportData}
-          >
-            <Download size={18} />
-            {exporting && <span>Đang xuất…</span>}
-          </button>
-          <button
-            title="Nhập dữ liệu"
-            aria-label="Nhập dữ liệu"
-            disabled={disabled}
-            onClick={() => importInput.current?.click()}
-          >
-            <Upload size={18} />
-          </button>
-          <input
-            ref={importInput}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) void importData(file);
-            }}
-          />
-          <button
-            title="Sao lưu / Khôi phục"
-            aria-label="Sao lưu / Khôi phục"
-            disabled={!c.ready}
-            onClick={() => setTool("backup")}
-          >
-            <History size={18} />
-          </button>
-          <button
-            title="Thống kê"
-            aria-label="Thống kê"
-            disabled={!c.ready}
-            onClick={() => setTool("stats")}
-          >
-            <BarChart3 size={18} />
-          </button>
-          <button
-            className="ai-button"
-            disabled={!c.ready}
-            onClick={() => setTool("ai")}
-          >
-            <Bot size={18} aria-hidden="true" />
-            <span>AI chẩn đoán</span>
-          </button>
-          <button
-            title="Cấu hình AI"
-            aria-label="Cấu hình AI"
-            onClick={() => setTool("settings")}
-          >
-            <Settings size={18} />
-          </button>
-          <button
-            className="logout"
-            disabled={c.pending}
-            onClick={async () => {
-              setTool(null);
-              setEditor(null);
-              await c.logout();
-            }}
-          >
-            <LogOut size={16} aria-hidden="true" />
-            <span>Đăng xuất</span>
-          </button>
-        </div>
-      </header>
-      <div className="status-strip" role="status">
-        <span className={`status-dot ${!c.online ? "offline" : ""}`} />
-        {!c.online
-          ? "Offline · Chỉ xem dữ liệu đã tải"
-          : c.pending
-            ? "Đang lưu dữ liệu…"
-            : c.ready
-              ? "Đã kết nối Firebase"
-              : "Đang tải / chuyển đổi dữ liệu…"}
-      </div>
+      <WorkspaceToolbar
+        query={query}
+        onQuery={updateQuery}
+        searchRef={searchRef}
+        ready={c.ready}
+        pending={c.pending}
+        online={c.online}
+        exporting={exporting}
+        onExport={() => void exportData()}
+        onImport={() => importInput.current?.click()}
+        onBackup={() => setTool("backup")}
+        onStats={() => setTool("stats")}
+        onAi={() => setTool("ai")}
+        onSettings={() => setTool("settings")}
+        onLogout={() => {
+          setTool(null);
+          setEditor(null);
+          void c.logout();
+        }}
+      />
+      <input
+        ref={importInput}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void importData(file);
+        }}
+      />
+      <SyncStatus
+        ready={c.ready}
+        pending={c.pending}
+        online={c.online}
+        fault={c.fault}
+      />
       {c.fault && (
-        <div className="global-alert alert" role="alert">
-          <span>{c.fault}</span>
-          <button
-            onClick={() => {
-              c.setFault("");
-              c.retry();
-            }}
-            disabled={c.pending}
-          >
-            Thử tải lại
-          </button>
-        </div>
+        <WorkspaceError
+          fault={c.fault}
+          ready={c.ready}
+          pending={c.pending}
+          onRetry={() => {
+            c.setFault("");
+            c.retry();
+          }}
+        />
       )}
       {!c.ready ? (
-        <main className="loading-state" id="main-content">
-          <h1>
-            {c.fault ? "Dữ liệu chưa sẵn sàng" : "Đang chuẩn bị kho kịch bản…"}
-          </h1>
-          <p className="muted">
-            Dữ liệu cũ được giữ nguyên trong quá trình chuyển đổi.
-          </p>
-        </main>
+        <WorkspaceLoading failed={!!c.fault} />
       ) : (
         <main className="workspace" id="main-content">
           <nav className="category-tabs" aria-label="Nhóm nghiệp vụ">
@@ -328,21 +284,14 @@ function WorkspaceContent({
                   </button>
                 )}
               </div>
-              <label className="search-field">
-                <Search size={18} aria-hidden="true" />
-                <span className="sr-only">Tìm kiếm kịch bản</span>
-                <input
-                  ref={searchRef}
-                  type="search"
-                  placeholder="Tìm nhanh trên tất cả nhóm…"
+              {mobileSearch && (
+                <SearchField
                   value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setActiveId("");
-                    setFocus(false);
-                  }}
+                  onChange={updateQuery}
+                  inputRef={mobileSearchRef}
+                  mobile
                 />
-              </label>
+              )}
               <details className="advanced-filter">
                 <summary>Bộ lọc nâng cao</summary>
                 <div className="form-stack">
